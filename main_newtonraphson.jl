@@ -1,10 +1,11 @@
 
 
-module  arclength
+module  NewtonRaphson
 
 using LinearAlgebra
 using SparseArrays
 using DelimitedFiles
+using Plots
 
 include("./Utilities.jl")
 using .Utilities
@@ -13,10 +14,10 @@ using .Elements
 
 
 
-export main_arclength
+export main_newtonraphson
 
 
-function main_arclength()
+function main_newtonraphson()
 
 
 
@@ -35,18 +36,20 @@ fname = "input_LeeFrame-nelem10.txt";
 
 ndim, ndof, nnode, nelem, nodecoords, elemConn, elemData, LM, neq, assy4r, dof_force, Fext, maxloadSteps, loadincr, outputlist = processfile(fname)
 
-
-display(LM)
+#display(LM)
 
 
 disp      = zeros(neq,1);
 
-display(disp)
+#display(disp)
 
 dispPrev  = deepcopy(disp);
 dispPrev2 = deepcopy(disp);
 dispPrev3 = deepcopy(disp);
 dispPrev4 = deepcopy(disp);
+
+#dispPrev *= 0.0;
+#dispPrev2 *= 0.0;
 
 
 Kglobal = zeros(neq,neq);
@@ -55,12 +58,10 @@ Rglobal = zeros(neq,1);
 
 bf = [0.0; 0.0];
 
-Ds     = deepcopy(loadincr);
-DsPrev = deepcopy(Ds);
-DsMax  = deepcopy(Ds);
-DsMin  = deepcopy(Ds);
-
-loadfactor      = loadincr;
+loadincrmax     = deepcopy(loadincr);
+loadincrmin     = deepcopy(loadincr);
+loadincrmin     = loadincrmin*16.0;
+loadfactor      = deepcopy(loadincr);
 loadfactorPrev2 = 0.0;
 loadfactorPrev  = 0.0;
 
@@ -75,27 +76,28 @@ dispFull = [disp];
 
 for  loadStep=1:maxloadSteps
     println("load step = ", loadStep);
+    println("load incr = ", loadincr);
 
-    #println("Ds = ", Ds)
-    #println("DsPrev = ", DsPrev)
+    loadfactor = loadfactorPrev + loadincr;
 
     if (loadStep > 1)
-      DsFactor1  = Ds/DsPrev
+      DsFactor1 = 1.0;
+      #DsFactor1  = loadfactor/loadfactorPrev;
+      #display(DsFactor1)
       disp       = (1.0+DsFactor1)*dispPrev - DsFactor1*dispPrev2;
-      loadfactor = (1.0+DsFactor1)*loadfactorPrev - DsFactor1*loadfactorPrev2;
     end
-    #println("load step = ", loadStep);
 
-    Du = disp - dispPrev;
-    Dl = loadfactor - loadfactorPrev;
-    #display(Du)
-    #println(" \n\n\n")
-    #display(Dl)
+    #println("")
+    #display(dispPrev2)
+    #println("")
+    #display(dispPrev)
+    #println("aaaaaaaaa")
+    #display(disp)
 
     convergedPrev = converged;
     converged = false;
 
-    for iter = 1:10
+    for iter = 1:20
         Kglobal *= 0.0;
         Rglobal *= 0.0;
 
@@ -133,61 +135,55 @@ for  loadStep=1:maxloadSteps
         #display(Kglobal)
         #display(Rglobal)
 
-        #[converged, du, dl] = solve_arclength(loadStep, neq, iter, Kglobal, Rglobal, dof_force, Fext, assy4r, Du, Dl, Ds);
-        converged, du, dl = solve_arclength_split(loadStep, neq, iter, Kglobal, Rglobal, dof_force, Fext, assy4r, Du, Dl, Ds);
+        R = Rglobal[assy4r];
+
+        #display(R)
+
+        rNorm = norm(R,2);
+
+        println(" Iter : ", iter, " rNorm : ", rNorm);
+    
+        if (rNorm < 1.0e-6)
+           converged = true;
+           break;
+        end
+
+        K1 = sparse(Kglobal[assy4r,assy4r]);
+
+        du = K1\R;
 
         #display(du)
 
-        if (converged)
-          break;
-        end
-
         disp[assy4r] = disp[assy4r] + du;
-        loadfactor = loadfactor + dl;
-
-        Du[assy4r] = Du[assy4r] + du;
-        Dl = Dl + dl;
     end
 
     if (converged)
-      if (loadStep == 1)
-         Ds = (sqrt(Du'*Du + loadfactor*loadfactor*Fext'*Fext))[1];
-
-         DsMax = Ds;
-         DsMin = Ds/1024.0;
-      end
-
       loadfactorPrev2 = loadfactorPrev;
       loadfactorPrev  = loadfactor;
+
       dispPrev2 = dispPrev;
       dispPrev  = disp;
 
-      DsPrev = Ds;
-      if (convergedPrev)
-        Ds = minimum([maximum([2.0*Ds, DsMin]), DsMax]);
-      end
+      loadincr = minimum([maximum([2.0*loadincr, loadincrmin]), loadincrmax]);
 
-      dispFull = [dispFull; disp];
+      loadStepConverged += 1;
+
       output = [output; disp[outputlist]'];
       llist = [llist; loadfactor];
 
-      #plot(nodecoords[:,1], nodecoords[:,2], line=(:black,0.9,5,:dot))
-      #for e=1:nelem
-      #  n1 = elemConn[e,3];
-      #  n2 = elemConn[e,4];
-      #  xx = [nodecoords[n1,1]+disp[ndof*(n1-1)+1], nodecoords[n2,1]+disp[ndof*(n2-1)+1]];
-      #  yy = [nodecoords[n1,2]+disp[ndof*(n1-1)+2], nodecoords[n2,2]+disp[ndof*(n2-1)+2]];
-      #  plot!(xx, yy, line=(:black,0.9,1,:solid))
-      #end
-      #current()
-
-      loadStepConverged += 1;
-    else
-      if (convergedPrev)
-        Ds = maximum([Ds*0.5, DsMin]);
-      else
-        Ds = maximum([Ds*0.25, DsMin]);
+      pp=plot(nodecoords[:,1], nodecoords[:,2], line=(:black,0.9,5,:dot))
+      for e=1:nelem
+        n1 = elemConn[e,3];
+        n2 = elemConn[e,4];
+        xx = [nodecoords[n1,1]+disp[ndof*(n1-1)+1], nodecoords[n2,1]+disp[ndof*(n2-1)+1]];
+        yy = [nodecoords[n1,2]+disp[ndof*(n1-1)+2], nodecoords[n2,2]+disp[ndof*(n2-1)+2]];
+        pp = plot!(xx, yy, line=(:black,0.9,1,:solid))
       end
+      display(pp)
+      current()
+
+    else
+      loadincr *= 0.5;
     end
     #current()
 
