@@ -6,5 +6,5 @@ include("./main_newtonraphson.jl")
 using .arclength
 using .NewtonRaphson
 
-main_arclength()
-#main_newtonraphson()
+#main_arclength()
+main_newtonraphson()

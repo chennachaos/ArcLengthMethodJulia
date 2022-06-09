@@ -32,10 +32,6 @@ linestr = split(line, ",");
 nnode   = parse(Int32, linestr[2])
 
 
-nperelem = 2;
-nsize = nperelem*ndof;
-neq = nnode*ndof;
-
 nodecoords = zeros(nnode,ndim);
 for i=1:nnode
     line = readline(fid);
@@ -70,16 +66,22 @@ end
 line    = readline(fid);
 linestr = split(line, ",");
 nelem   = parse(Int32, linestr[2])
+npElem   = parse(Int32, linestr[3])
 
-elemConn = zeros(Int32, nelem, 4);
+nsize = npElem*ndof;
+neq = nnode*ndof;
+
+elemConn = zeros(Int32, nelem, npElem+2);
 for i=1:nelem
     line    = readline(fid);
     linestr = split(line, ",");
 
     elemConn[i,1] = parse(Int32, linestr[2]);
     elemConn[i,2] = parse(Int32, linestr[3]);
-    elemConn[i,3] = parse(Int32, linestr[4]);
-    elemConn[i,4] = parse(Int32, linestr[5]);
+
+    for j=1:npElem
+      elemConn[i,2+j] = parse(Int32, linestr[3+j]);
+    end
 end
 
 # Dirichlet boundary conditions
@@ -164,7 +166,7 @@ LM  = zeros(Int32, nelem, nsize);
 
 for e=1:nelem
     count = 1;
-    for jj=1:nperelem
+    for jj=1:npElem
         ind = ndof*(elemConn[e,jj+2]-1)+1;
         for kk=1:ndof
             LM[e,count] = ind;

@@ -23,10 +23,17 @@ function main_newtonraphson()
 
 #######################
 
+fname = "input_plate_square_Q4-nelem2.txt"
+#fname = "input_plate_square_Q4-nelem20.txt"
+#fname = "input_plate_square_Q9-nelem10.txt"
+
+#fname = "input_Sze_Ex1_Q4-nelem10x1.txt"
+#fname = "input_Sze_Ex3_Q4-nelem10x80.txt"
+
 #fname = "input_Truss_2D_3members_model1.txt";
 #fname = "input_Truss_3D_2members.txt";
 #fname = "input_Truss_3D_12members.txt";
-fname = "input_LeeFrame-nelem10.txt";
+#fname = "input_LeeFrame-nelem10.txt";
 #fname = "input_LeeFrame-nelem20.txt";
 #fname = "input_arch-215deg.txt";
 #fname = "input_Arch_semicircle-nelem50-sym.txt";
@@ -38,6 +45,7 @@ ndim, ndof, nnode, nelem, nodecoords, elemConn, elemData, LM, neq, assy4r, dof_f
 
 #display(LM)
 
+npElem = size(elemConn)[2] - 2;
 
 disp      = zeros(neq,1);
 
@@ -97,7 +105,7 @@ for  loadStep=1:maxloadSteps
     convergedPrev = converged;
     converged = false;
 
-    for iter = 1:20
+    for iter = 1:2
         Kglobal *= 0.0;
         Rglobal *= 0.0;
 
@@ -122,7 +130,13 @@ for  loadStep=1:maxloadSteps
         else
           if (ndof == 3) # Truss element
             for e = 1:nelem
-                Klocal, Flocal = Truss_3D_model2(elemData, elemConn, e, nodecoords, disp, bf);
+                #Klocal, Flocal = Truss_3D_model2(elemData, elemConn, e, nodecoords, disp, bf);
+                nodeNums = elemConn[e,3:end];
+
+                #Klocal, Flocal = Mindlinplate_Linear(elemData, nodeNums, e, nodecoords, disp, bf);
+                Klocal, Flocal = Mindlinplate_NonLinear_Model1(elemData, nodeNums, e, nodecoords, disp, bf);
+
+                #display(Flocal)
 
                 Kglobal = Assembly_Matrix(Kglobal,Klocal,LM,e);
                 Rglobal = Assembly_Vector(Rglobal,Flocal,LM,e);
@@ -143,16 +157,19 @@ for  loadStep=1:maxloadSteps
 
         println(" Iter : ", iter, " rNorm : ", rNorm);
     
-        if (rNorm < 1.0e-6)
+        if (rNorm < 1.0e-5)
            converged = true;
            break;
         end
+
+        #display(Kglobal[assy4r,assy4r]);
+        #println("\n\n");
 
         K1 = sparse(Kglobal[assy4r,assy4r]);
 
         du = K1\R;
 
-        #display(du)
+        #display(du);
 
         disp[assy4r] = disp[assy4r] + du;
     end
@@ -171,16 +188,18 @@ for  loadStep=1:maxloadSteps
       output = [output; disp[outputlist]'];
       llist = [llist; loadfactor];
 
-      pp=plot(nodecoords[:,1], nodecoords[:,2], line=(:black,0.9,5,:dot))
-      for e=1:nelem
-        n1 = elemConn[e,3];
-        n2 = elemConn[e,4];
-        xx = [nodecoords[n1,1]+disp[ndof*(n1-1)+1], nodecoords[n2,1]+disp[ndof*(n2-1)+1]];
-        yy = [nodecoords[n1,2]+disp[ndof*(n1-1)+2], nodecoords[n2,2]+disp[ndof*(n2-1)+2]];
-        pp = plot!(xx, yy, line=(:black,0.9,1,:solid))
-      end
-      display(pp)
-      current()
+      writeoutputvtk(ndim, nelem, nnode, npElem, ndof, nodecoords, elemConn, disp);
+
+      #pp=plot(nodecoords[:,1], nodecoords[:,2], line=(:black,0.9,5,:dot))
+      #for e=1:nelem
+      #  n1 = elemConn[e,3];
+      #  n2 = elemConn[e,4];
+      #  xx = [nodecoords[n1,1]+disp[ndof*(n1-1)+1], nodecoords[n2,1]+disp[ndof*(n2-1)+1]];
+      #  yy = [nodecoords[n1,2]+disp[ndof*(n1-1)+2], nodecoords[n2,2]+disp[ndof*(n2-1)+2]];
+      #  pp = plot!(xx, yy, line=(:black,0.9,1,:solid))
+      #end
+      #display(pp)
+      #current()
 
     else
       loadincr *= 0.5;
