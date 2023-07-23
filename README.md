@@ -8,11 +8,11 @@ Uncomment the corresponding line in the **main_arclength.jl** file to run the sc
 Some load-displacement curves computed with this code.
 
 * Lee frame
-![](LeeFrame-path-dl0p5.jpg)
+![](./inputs/LeeFrame-path-dl0p5.jpg)
 
 
 * 215-degree circular arch
-![](arch-215deg-path.jpg)
+![](./inputs/arch-215deg-path.jpg)
 
 * Semi-circular arch with asymmetric loading
-![](arch-semicircle-unsymmetric-path.jpg)
+![](./inputs/arch-semicircle-unsymmetric-path.jpg)
