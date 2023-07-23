@@ -18,7 +18,8 @@ function main_newtonraphson(dirname, fname)
 
 
 inpfile = dirname * "/" * fname;
-ndim, ndof, nnode, nelem, nodecoords, elemConn, elemData, LM, neq, assy4r, dof_force, Fext, maxloadSteps, loadincr, outputlist = processfile(inpfile);
+eltype, ndim, ndof, nnode, nelem, nodecoords, elemConn, elemData, NodeDoFArray, neq, assy4r, dof_force, Fext, maxloadSteps, loadincr, outputlist = processfile(inpfile);
+
 
 npElem = size(elemConn)[2] - 2;
 
@@ -70,74 +71,54 @@ for  loadStep=1:maxloadSteps
     convergedPrev = converged;
     converged = false;
 
+    # iteration loop
     for iter = 1:10
         Kglobal *= 0.0;
         Rglobal *= 0.0;
 
-        if (ndim == 2)
-          if (ndof == 2) # Truss element
-            for e = 1:nelem
-                Klocal, Flocal = Truss_2D_model1(elemData, elemConn, e, nodecoords, disp, bf);
+        # loop over elements
+        for e = 1:nelem
 
-                Kglobal = Assembly_Matrix(Kglobal,Klocal,LM,e);
-                Rglobal = Assembly_Vector(Rglobal,Flocal,LM,e);
+            nodeNums = elemConn[e,3:end];
+            forAssyVec = NodeDoFArray[e,:];
+
+            if(eltype == "Beam_EulerBernoulli_2D")
+              #
+              Klocal, Flocal = Beam_EulerBernoulli_2D(elemData, nodeNums, nodecoords, disp, bf);
+              #
+            elseif(eltype == "Beam_Timoshenko_2D")
+              #
+              Klocal, Flocal = Beam_Timoshenko_2D(elemData, nodeNums, nodecoords, disp, bf);
+              #
+            elseif(eltype == "Beam_GeomExact_2D")
+              #
+              Klocal, Flocal = Beam_GeomExact_2D(elemData, nodeNums, nodecoords, disp, bf);
+              #
+            elseif(eltype == "Plate_Mindlin_Linear")
+              #
+              Klocal, Flocal = Plate_Mindlin_Linear(elemData, nodeNums, nodecoords, disp, bf);
+              #
+            elseif(eltype == "Plate_Mindlin_NonLinear_Model1")
+              #
+              Klocal, Flocal = Plate_Mindlin_NonLinear_Model1(elemData, nodeNums, nodecoords, disp, bf);
+              #
+            elseif(eltype == "Shell_Flat_Linear")
+              #
+              Klocal, Flocal = Shell_Flat_Linear(elemData, nodeNums, nodecoords, disp, bf);
+              #
+            elseif(eltype == "Shell_Flat_Linear_Rotation")
+              #
+              Klocal, Flocal = Shell_Flat_Linear_Rotation(elemData, nodeNums, nodecoords, disp, bf);
+              #
             end
-          else # Beam element
-            for e = 1:nelem
-                Klocal, Flocal = GeomExactBeam_2D(elemData, elemConn, e, nodecoords, disp, bf);
-                #display(Klocal)
-                #display(Flocal)
 
-                Kglobal = Assembly_Matrix(Kglobal,Klocal,LM,e);
-                Rglobal = Assembly_Vector(Rglobal,Flocal,LM,e);
-            end
-          end
-        else
-          if (ndof == 3) # Truss element
-            for e = 1:nelem
-                #Klocal, Flocal = Truss_3D_model2(elemData, elemConn, e, nodecoords, disp, bf);
-                nodeNums = elemConn[e,3:end];
-
-                Klocal, Flocal = Mindlinplate_Linear(elemData, nodeNums, e, nodecoords, disp, bf);
-
-                #display(Flocal)
-
-                Kglobal = Assembly_Matrix(Kglobal,Klocal,LM,e);
-                Rglobal = Assembly_Vector(Rglobal,Flocal,LM,e);
-            end
-          elseif (ndof == 5) # Nonlinear plate element
-            for e = 1:nelem
-                #Klocal, Flocal = Truss_3D_model2(elemData, elemConn, e, nodecoords, disp, bf);
-                nodeNums = elemConn[e,3:end];
-
-                Klocal, Flocal = Mindlinplate_NonLinear_Model1(elemData, nodeNums, e, nodecoords, disp, bf);
-
-                #display(Flocal)
-
-                Kglobal = Assembly_Matrix(Kglobal,Klocal,LM,e);
-                Rglobal = Assembly_Vector(Rglobal,Flocal,LM,e);
-            end
-        elseif (ndof == 6) # Linear Shell element
-          for e = 1:nelem
-              nodeNums = elemConn[e,3:end];
-
-              #Klocal, Flocal = Shell_Flat_Linear(elemData, nodeNums, e, nodecoords, disp, bf);
-              Klocal, Flocal = Shell_Flat_Linear_Rotation(elemData, nodeNums, e, nodecoords, disp, bf);
-
-              Kglobal = Assembly_Matrix(Kglobal,Klocal,LM,e);
-              Rglobal = Assembly_Vector(Rglobal,Flocal,LM,e);
-          end
+            Kglobal = Assembly_Matrix(Kglobal, Klocal, forAssyVec);
+            Rglobal = Assembly_Vector(Rglobal, Flocal, forAssyVec);
         end
-      end
 
         Rglobal = Rglobal + loadfactor*Fext;
 
-        #display(Kglobal)
-        #display(Rglobal)
-
         R = Rglobal[assy4r];
-
-        #display(R)
 
         rNorm = norm(R,2);
 
@@ -204,16 +185,15 @@ for  loadStep=1:maxloadSteps
 end
 
 
-linestr  = split(fname, ".");
-slnfilename = dirname * "/" * linestr[1] * "-" * "solution.dat";
-fileID = open(slnfilename,"w");
-
-for ii=1:size(llist,1)
-  writedlm(fileID, [llist[ii] output[ii,1] output[ii,2] ]);
-  #writedlm(fileID,"%12.8f \t %12.8f \t %12.8f", llist[ii], output[ii,1], output[ii,2]);
-end
-
-close(fileID)
+#linestr  = split(fname, ".");
+#slnfilename = dirname * "/" * linestr[1] * "-" * "solution.dat";
+#fileID = open(slnfilename,"w");
+#
+#for ii=1:size(llist,1)
+#  writedlm(fileID, [llist[ii] output[ii,:]' ]);
+#end
+#
+#close(fileID)
 
 return
 end

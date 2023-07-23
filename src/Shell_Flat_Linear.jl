@@ -1,14 +1,8 @@
 using LinearAlgebra
 
-function Shell_Flat_Linear(elmDat, nodeNums, e, XX, soln, bf)
-
-af = 1.0;
+function Shell_Flat_Linear(elmDat, nodeNums, XX, soln, bf)
 
 nlbf   = size(nodeNums)[1];
-degree = 1;
-if (nlbf == 9)
-    degree = 2;
-end
 ndof   = 6;
 nsize  = nlbf*ndof;
 
@@ -17,8 +11,8 @@ rho    = elmDat[2];
 h      = elmDat[3];
 E      = elmDat[4];
 nu     = elmDat[5];
-#kappa  = elmDat[6];
-kappa  = 5.0/6.0;
+kappa  = elmDat[6];
+#kappa  = 5.0/6.0;
 
 #println("bforce ", bforce);
 
@@ -143,16 +137,16 @@ for gp=1:nGP
       r5 = r1+4;
       r6 = r1+5;
 
-      grad[1,1] = grad[1,1] + solnElem[r1] * bb1;
-      grad[1,2] = grad[1,2] + solnElem[r1] * bb2;
-      grad[2,1] = grad[2,1] + solnElem[r2] * bb1;
-      grad[2,2] = grad[2,2] + solnElem[r2] * bb2;
-      grad[3,1] = grad[3,1] + solnElem[r3] * bb1;
-      grad[3,2] = grad[3,2] + solnElem[r3] * bb2;
+      grad[1,1]  = grad[1,1]  + solnElem[r1] * bb1;
+      grad[1,2]  = grad[1,2]  + solnElem[r1] * bb2;
+      grad[2,1]  = grad[2,1]  + solnElem[r2] * bb1;
+      grad[2,2]  = grad[2,2]  + solnElem[r2] * bb2;
+      grad[3,1]  = grad[3,1]  + solnElem[r3] * bb1;
+      grad[3,2]  = grad[3,2]  + solnElem[r3] * bb2;
 
-      phis[1] = phis[1] + solnElem[r4] * bb3;
-      phis[2] = phis[2] + solnElem[r5] * bb3;
-      phis[3] = phis[3] + solnElem[r6] * bb3;
+      phis[1]    = phis[1]    + solnElem[r4] * bb3;
+      phis[2]    = phis[2]    + solnElem[r5] * bb3;
+      phis[3]    = phis[3]    + solnElem[r6] * bb3;
 
       dphis[1,1] = dphis[1,1] + solnElem[r4] * bb1;
       dphis[1,2] = dphis[1,2] + solnElem[r4] * bb2;
@@ -268,9 +262,9 @@ for gp=1:nGP
       grad[3,1] = grad[3,1] + solnElem[r3] * bb1;
       grad[3,2] = grad[3,2] + solnElem[r3] * bb2;
 
-      phis[1] = phis[1] + solnElem[r4] * bb3;
-      phis[2] = phis[2] + solnElem[r5] * bb3;
-      phis[3] = phis[3] + solnElem[r6] * bb3;
+      phis[1]   = phis[1]   + solnElem[r4] * bb3;
+      phis[2]   = phis[2]   + solnElem[r5] * bb3;
+      phis[3]   = phis[3]   + solnElem[r6] * bb3;
     end
 
     for ii=1:nlbf
@@ -301,8 +295,9 @@ for gp=1:nGP
 end #gp
 
 
+# adjust the stiffness matrix for the sixth DOF
+#
 fact = abs(maximum(Diagonal(Klocal)));
-#println("fact = ", fact);
 for ii=1:nlbf
   r1 = ndof*(ii-1)+6;
 

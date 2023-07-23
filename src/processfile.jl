@@ -8,20 +8,40 @@ function  processfile(fname)
 
 fid=open(fname,"r");
 
-# ndim
+# eltype
 
 line    = readline(fid);
 println("line = ", line)
 linestr = split(line, ",");
-ndim    = parse(Int32, linestr[2])
+eltype  = strip(linestr[2]);
+println("eltype = ", eltype)
+
+# set ndim and ndof
+#if( cmp(eltype, "Beam_EulerBernoulli_2D") == 0 )
+if( eltype == "Beam_EulerBernoulli_2D" )
+    ndim = 2;
+    ndof = 3;
+elseif( eltype == "Beam_Timoshenko_2D" )
+    ndim = 2;
+    ndof = 3;
+elseif( eltype == "Beam_GeomExact_2D" )
+    ndim = 2;
+    ndof = 3;    
+elseif( eltype == "Plate_Mindlin_Linear" )
+    ndim = 3;
+    ndof = 3;
+elseif( eltype == "Plate_Mindlin_NonLinear_Model1" )
+    ndim = 3;
+    ndof = 3;
+elseif( eltype == "Shell_Flat_Linear" )
+    ndim = 3;
+    ndof = 6;
+elseif( eltype == "Shell_Flat_Linear_Rotation" )
+    ndim = 3;
+    ndof = 6;
+end
+
 println("ndim = ", ndim)
-
-# ndof
-
-line    = readline(fid);
-println("line = ", line)
-linestr = split(line, ",");
-ndof    = parse(Int32, linestr[2])
 println("ndof = ", ndof)
 
 # nodes
@@ -161,14 +181,14 @@ close(fid);
 
 # data structures
 
-LM  = zeros(Int32, nelem, nsize);
+NodeDoFArray  = zeros(Int32, nelem, nsize);
 
 for e=1:nelem
     count = 1;
     for jj=1:npElem
         ind = ndof*(elemConn[e,jj+2]-1)+1;
         for kk=1:ndof
-            LM[e,count] = ind;
+            NodeDoFArray[e,count] = ind;
             ind = ind + 1;
             count = count + 1;
         end
@@ -177,5 +197,5 @@ for e=1:nelem
 end
 
 
-return  ndim, ndof, nnode, nelem, nodecoords, elemConn, elemData, LM, neq, assy4r, dof_force, Fext, maxloadSteps, loadincr, outputlist
+return  eltype, ndim, ndof, nnode, nelem, nodecoords, elemConn, elemData, NodeDoFArray, neq, assy4r, dof_force, Fext, maxloadSteps, loadincr, outputlist
 end

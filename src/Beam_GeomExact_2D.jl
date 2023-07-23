@@ -1,4 +1,4 @@
-function GeomExactBeam_2D(elmDat, IEN, e, XX, soln, bf)
+function Beam_GeomExact_2D(elmDat, nodeNums, nodecoords, soln, bf)
 
 af = 1.0;
 
@@ -23,13 +23,16 @@ GA = G*A*kappa;
 Klocal=zeros(nsize,nsize); # Local stiffness matrix
 Flocal=zeros(nsize,1);   # Local load vector
 
+node1 = nodeNums[1]
+node2 = nodeNums[2]
+
 x0 = [0.0, 0.0];
 y0 = [0.0, 0.0];
 
-x0[1] = XX[IEN[e,3],1];
-y0[1] = XX[IEN[e,3],2];
-x0[2] = XX[IEN[e,4],1];
-y0[2] = XX[IEN[e,4],2];
+x0[1] = nodecoords[node1,1];
+y0[1] = nodecoords[node1,2];
+x0[2] = nodecoords[node2,1];
+y0[2] = nodecoords[node2,2];
 
 dx = x0[2] - x0[1];
 dy = y0[2] - y0[1];
@@ -56,13 +59,13 @@ res = zeros(3,1);
 B   = zeros(3,6);
 D   = zeros(3,3);
 
-uxn[1] = soln[ndof*(IEN[e,3]-1)+1];
-uzn[1] = soln[ndof*(IEN[e,3]-1)+2];
-btn[1] = soln[ndof*(IEN[e,3]-1)+3];
+uxn[1] = soln[ndof*(node1-1)+1];
+uzn[1] = soln[ndof*(node1-1)+2];
+btn[1] = soln[ndof*(node1-1)+3];
 
-uxn[2] = soln[ndof*(IEN[e,4]-1)+1];
-uzn[2] = soln[ndof*(IEN[e,4]-1)+2];
-btn[2] = soln[ndof*(IEN[e,4]-1)+3];
+uxn[2] = soln[ndof*(node2-1)+1];
+uzn[2] = soln[ndof*(node2-1)+2];
+btn[2] = soln[ndof*(node2-1)+3];
 
 dummy = RotMat'*[uxn[1]; uzn[1]; btn[1]; uxn[2]; uzn[2]; btn[2]];
 uxn[1] = dummy[1];
@@ -77,7 +80,7 @@ nGP = 1;
 gpvec, gwvec = getGaussPoints1D(nGP);
 
 for gp = 1:nGP
-    N,dN_dx,d2N_dx2,J,xcoord = shape_functions_Derivatives_1D(IEN[e,3:end], XX, p, gpvec[gp]);
+    N,dN_dx,d2N_dx2,J,xcoord = shape_functions_Derivatives_1D(nodeNums, nodecoords, p, gpvec[gp]);
 
     ux = 0.0;uz =0.0; bt = 0.0;
     dux = 0.0;duz = 0.0; dbt = 0.0;
@@ -184,7 +187,7 @@ for gp = 1:nGP
     end
 end
 
-h = XX[IEN[e,4]] - XX[IEN[e,3]];
+h = nodecoords[node2] - nodecoords[node1];
 
 Flocal[1] = Flocal[1] + 0.5*h*bf[1];
 Flocal[4] = Flocal[4] + 0.5*h*bf[1];

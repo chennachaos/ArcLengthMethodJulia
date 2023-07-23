@@ -20,7 +20,21 @@ function main_arclength(dirname, fname)
 
 
 inpfile = dirname * "/" * fname;
-ndim, ndof, nnode, nelem, nodecoords, elemConn, elemData, LM, neq, assy4r, dof_force, Fext, maxloadSteps, loadincr, outputlist = processfile(inpfile);
+eltype, ndim, ndof, nnode, nelem, nodecoords, elemConn, elemData, NodeDoFArray, neq, assy4r, dof_force, Fext, maxloadSteps, loadincr, outputlist = processfile(inpfile);
+
+
+if( (eltype == "Beam_EulerBernoulli_2D") ||
+    (eltype == "Beam_Timoshenko_2D") ||
+    (eltype == "Plate_Mindlin_Linear") ||
+    (eltype == "Shell_Flat_Linear") ||
+    (eltype == "Shell_Flat_Linear_Rotation")
+  )
+  println("\n\n\n");
+  println("Arclength method is NOT SUPPORTED for LINEAR elements");
+  println("\n\n\n");
+  exit();
+end
+
 
 npElem = size(elemConn)[2] - 2;
 
@@ -83,34 +97,46 @@ for  loadStep=1:maxloadSteps
         Kglobal *= 0.0;
         Rglobal *= 0.0;
 
-        if (ndim == 2)
-          if (ndof == 2) # Truss element
-            for e = 1:nelem
-                Klocal, Flocal = Truss_2D_model1(elemData, elemConn, e, nodecoords, disp, bf);
+        # loop over elements
+        for e = 1:nelem
 
-                Kglobal = Assembly_Matrix(Kglobal,Klocal,LM,e);
-                Rglobal = Assembly_Vector(Rglobal,Flocal,LM,e);
-            end
-          else # Beam element
-            for e = 1:nelem
-                Klocal, Flocal = GeomExactBeam_2D(elemData, elemConn, e, nodecoords, disp, bf);
-                #display(Klocal)
-                #display(Flocal)
+          nodeNums = elemConn[e,3:end];
+          forAssyVec = NodeDoFArray[e,:];
 
-                Kglobal = Assembly_Matrix(Kglobal,Klocal,LM,e);
-                Rglobal = Assembly_Vector(Rglobal,Flocal,LM,e);
-            end
+          if(eltype == "Beam_EulerBernoulli_2D")
+            #
+            Klocal, Flocal = Beam_EulerBernoulli_2D(elemData, nodeNums, nodecoords, disp, bf);
+            #
+          elseif(eltype == "Beam_Timoshenko_2D")
+            #
+            Klocal, Flocal = Beam_Timoshenko_2D(elemData, nodeNums, nodecoords, disp, bf);
+            #
+          elseif(eltype == "Beam_GeomExact_2D")
+            #
+            Klocal, Flocal = Beam_GeomExact_2D(elemData, nodeNums, nodecoords, disp, bf);
+            #
+          elseif(eltype == "Plate_Mindlin_Linear")
+            #
+            Klocal, Flocal = Plate_Mindlin_Linear(elemData, nodeNums, nodecoords, disp, bf);
+            #
+          elseif(eltype == "Plate_Mindlin_NonLinear_Model1")
+            #
+            Klocal, Flocal = Plate_Mindlin_NonLinear_Model1(elemData, nodeNums, nodecoords, disp, bf);
+            #
+          elseif(eltype == "Shell_Flat_Linear")
+            #
+            Klocal, Flocal = Shell_Flat_Linear(elemData, nodeNums, e, nodecoords, disp, bf);
+            #
+          elseif(eltype == "Shell_Flat_Linear_Rotation")
+            #
+            Klocal, Flocal = Shell_Flat_Linear_Rotation(elemData, nodeNums, nodecoords, disp, bf);
+            #
           end
-        else
-          if (ndof == 3) # Truss element
-            for e = 1:nelem
-                Klocal, Flocal = Truss_3D_model2(elemData, elemConn, e, nodecoords, disp, bf);
 
-                Kglobal = Assembly_Matrix(Kglobal,Klocal,LM,e);
-                Rglobal = Assembly_Vector(Rglobal,Flocal,LM,e);
-            end
-          end
-        end
+          Kglobal = Assembly_Matrix(Kglobal, Klocal, forAssyVec);
+          Rglobal = Assembly_Vector(Rglobal, Flocal, forAssyVec);
+      end
+
 
         Rglobal = Rglobal + loadfactor*Fext;
 
@@ -177,8 +203,7 @@ slnfilename = dirname * "/" * linestr[1] * "-" * "solution.dat";
 fileID = open(slnfilename,"w");
 
 for ii=1:size(llist,1)
-  writedlm(fileID, [llist[ii] output[ii,1] output[ii,2] ]);
-  #writedlm(fileID,"%12.8f \t %12.8f \t %12.8f", llist[ii], output[ii,1], output[ii,2]);
+  writedlm(fileID, [llist[ii] output[ii,:]' ]);
 end
 
 close(fileID)

@@ -1,4 +1,4 @@
-function Mindlinplate_NonLinear_Model1(elmDat, nodeNums, e, XX, soln, bf)
+function Plate_Mindlin_NonLinear_Model1(elmDat, nodeNums, e, XX, soln, bf)
 
 af = 1.0;
 

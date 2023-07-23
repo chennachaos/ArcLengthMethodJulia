@@ -1,6 +1,5 @@
-ndim,2
-ndof,3
-coor,21
+eltype,Beam_GeomExact_2D
+nodes,21
  1,  0,  0
  2,  0, 12
  3,  0, 24

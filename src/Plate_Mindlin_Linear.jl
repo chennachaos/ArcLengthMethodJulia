@@ -1,4 +1,4 @@
-function Mindlinplate_Linear(elmDat, nodeNums, e, XX, soln, bf)
+function Plate_Mindlin_Linear(elmDat, nodeNums, XX, soln, bf)
 
 af = 1.0;
 
